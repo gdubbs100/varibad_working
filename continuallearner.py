@@ -34,6 +34,8 @@ class ContinualLearner:
             steps_per_env, 
             log_dir, 
             scenario_name, 
+            gamma,
+            tau,
             log_every = 10,
             quantiles = [i/10 for i in range(1, 10)],
             randomization = 'random_init_fixed20'):
@@ -58,8 +60,11 @@ class ContinualLearner:
 
         # set params for runs
         self.num_processes = num_processes
-        # steps_per_env = 2000 # might be passed to envs during env creation
         self.rollout_len = rollout_len
+
+        ## discount rates
+        self.gamma = gamma
+        self.tau = tau
 
         # network
         self.agent = agent
@@ -166,9 +171,30 @@ class ContinualLearner:
                 )
 
                 step += 1
+            ## TODO: compute returns!
+            ## get next value
+            with torch.no_grad():
+                _, latent_mean, latent_logvar, hidden_state = self.agent.actor_critic.encoder(action, obs, reward, hidden_state, return_prior = False)
+                latent = torch.cat((latent_mean.clone(), latent_logvar.clone()), dim = -1)[None,:]
+                next_value = self.agent.get_value(
+                    state=obs, 
+                    belief=None, 
+                    task=None, 
+                    latent=latent
+                    ).detach()
+
+            # compute the returns
+            self.storage.compute_returns(
+                next_value = next_value, 
+                use_gae = True,
+                gamma = self.gamma,
+                tau = self.tau,
+                use_proper_time_limits=True
+            )
+            ## Update model
+            value_loss_epoch, action_loss_epoch, dist_entropy_epoch, loss_epoch = self.agent.update(self.storage)
 
             ## Log training loss
-            value_loss_epoch, action_loss_epoch, dist_entropy_epoch, loss_epoch = self.agent.update(self.storage)
             self.logger.add_tensorboard('value_loss', value_loss_epoch, eps)
             self.logger.add_tensorboard('action_loss', action_loss_epoch, eps)
             self.logger.add_tensorboard('entropy_loss', dist_entropy_epoch, eps)

@@ -9,6 +9,7 @@ from continualworld_utils.utils import get_subtasks
 from continualworld_utils.constants import MT50
 from environments.env_utils.vec_env import VecEnvWrapper
 from environments.env_utils.vec_env.subproc_vec_env import SubprocVecEnv
+from environments.parallel_envs import VecNormalize
 
 
 def make_continual_env(env_id, **kwargs):
@@ -17,7 +18,13 @@ def make_continual_env(env_id, **kwargs):
         return env
     return _thunk
 
-def prepare_base_envs(task_names, benchmark = MT50, task_set = 'train', randomization="random_init_fixed20"):
+def prepare_base_envs(
+        task_names,
+        benchmark = MT50,
+        task_set = 'train', 
+        randomization="random_init_fixed20",
+        # normalise_rewards = True
+        ):
     """
     task_names: list of task names from metworld benchmark
     benchmark: a set of metaworld benchmark tasks (default is MT50)
@@ -32,7 +39,8 @@ def prepare_base_envs(task_names, benchmark = MT50, task_set = 'train', randomiz
             env=benchmark.test_classes[task_name]()
         else:
             raise ValueError('task_set must be one of test or train')
-
+        # if normalise_rewards:
+        #     envs = VecNormalize(envs, normalise_rew=normalise_rewards, ret_rms=None, gamma=gamma)
         env = RandomizationWrapper(env, get_subtasks(task_name, benchmark, task_set), randomization)
         env.name = task_name
         envs.append(env)

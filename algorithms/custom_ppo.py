@@ -158,10 +158,11 @@ class CustomPPO:
 
         return value_loss_epoch, action_loss_epoch, dist_entropy_epoch, loss_epoch
 
-
-
     def act(self, state, latent, belief, task, deterministic = False):
         return self.actor_critic.act(state, latent, belief, task, deterministic)
+    
+    def get_value(self, state, latent, belief, task):
+        return self.actor_critic.get_value(state, latent, belief, task)
     
     def _recompute_embeddings(self, policy_storage, sample, update_idx, detach_every):
         latent = [policy_storage.latent[0].detach().clone()]
@@ -380,6 +381,8 @@ class RecurrentPPO:
 
     def act(self, state, latent, belief, task, deterministic = False):
         return self.actor_critic.act(state, latent, belief, task, deterministic)
+    
+
     
     def _recompute_embeddings(self, policy_storage, sample, update_idx, detach_every):
         latent = [policy_storage.latent[0].detach().clone()]
